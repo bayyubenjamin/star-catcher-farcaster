@@ -17,7 +17,6 @@ import {
     getDoc, 
     onSnapshot, 
     collection, 
-    addDoc, 
     getDocs,
     writeBatch,
     serverTimestamp
@@ -266,14 +265,15 @@ const StarCatcherGame = () => {
 // =================================================================================
 
 // --- Firebase Configuration ---
-// ❗ PENTING: Ganti konfigurasi di bawah ini dengan konfigurasi Firebase Anda sendiri.
-const firebaseConfig = { 
-    apiKey: "GANTI_DENGAN_API_KEY_ANDA", 
-    authDomain: "GANTI_DENGAN_AUTH_DOMAIN_ANDA", 
-    projectId: "GANTI_DENGAN_PROJECT_ID_ANDA", 
-    storageBucket: "GANTI_DENGAN_STORAGE_BUCKET_ANDA", 
-    messagingSenderId: "GANTI_DENGAN_MESSAGING_SENDER_ID_ANDA", 
-    appId: "GANTI_DENGAN_APP_ID_ANDA" 
+// Konfigurasi ini sudah diisi dengan data Anda.
+const firebaseConfig = {
+  apiKey: "AIzaSyDnHu1tKy-VEQK0zarGx7MpJFc_tyzbgyw",
+  authDomain: "star-40a0b.firebaseapp.com",
+  projectId: "star-40a0b",
+  storageBucket: "star-40a0b.appspot.com",
+  messagingSenderId: "659329766733",
+  appId: "1:659329766733:web:1dbd02342f2852329a1304",
+  measurementId: "G-YHTYSTXBZ6"
 };
 
 // Anda bisa membuat beberapa lotre berbeda dengan mengubah ID ini
@@ -570,3 +570,4 @@ export default function App() {
         </div>
     );
 }
+
