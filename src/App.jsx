@@ -1,9 +1,10 @@
 // src/App.jsx
 
 import React, { useState, useEffect } from 'react';
-import HomePage from './components/pages/HomePage';
-import StarCatcherPage from './components/pages/StarCatcherPage';
-import LotteryPage from './components/pages/LotteryPage';
+// PERBAIKAN: Menambahkan ekstensi .jsx pada path import
+import HomePage from './components/pages/HomePage.jsx';
+import StarCatcherPage from './components/pages/StarCatcherPage.jsx';
+import LotteryPage from './components/pages/LotteryPage.jsx';
 
 export default function App() {
     const [route, setRoute] = useState(window.location.pathname);
