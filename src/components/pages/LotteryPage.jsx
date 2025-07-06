@@ -2,18 +2,18 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { 
-    getAuth, 
-    signInAnonymously, 
+import {
+    getAuth,
+    signInAnonymously,
     onAuthStateChanged,
 } from 'firebase/auth';
-import { 
-    getFirestore, 
-    doc, 
-    setDoc, 
-    getDoc, 
-    onSnapshot, 
-    collection, 
+import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc,
+    onSnapshot,
+    collection,
     getDocs,
     writeBatch,
     serverTimestamp
@@ -30,11 +30,14 @@ const firebaseConfig = {
   measurementId: "G-YHTYSTXBZ6"
 };
 
+// Pindahkan inisialisasi ke luar komponen agar hanya dijalankan sekali
+const app = initializeApp(firebaseConfig);
+const authInstance = getAuth(app);
+const dbInstance = getFirestore(app);
+
 const appId = 'default-crypto-lottery';
 
 const CryptoLotteryApp = () => {
-    const [auth, setAuth] = useState(null);
-    const [db, setDb] = useState(null);
     const [userId, setUserId] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
 
@@ -54,13 +57,6 @@ const CryptoLotteryApp = () => {
     const [showWinnerModal, setShowWinnerModal] = useState(false);
 
     useEffect(() => {
-        const app = initializeApp(firebaseConfig);
-        const authInstance = getAuth(app);
-        const dbInstance = getFirestore(app);
-        
-        setAuth(authInstance);
-        setDb(dbInstance);
-
         const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
             if (user) {
                 setUserId(user.uid);
@@ -79,15 +75,23 @@ const CryptoLotteryApp = () => {
     }, []);
 
     useEffect(() => {
-        if (!isAuthReady || !db || !userId) return;
+        if (!isAuthReady || !dbInstance || !userId) return;
+        
+        const checkUserJoined = async () => {
+            const participantDocRef = doc(dbInstance, `artifacts/${appId}/public/data/lottery/current/participants`, userId);
+            const docSnap = await getDoc(participantDocRef);
+            setHasJoined(docSnap.exists());
+        };
+        checkUserJoined();
+        
         setIsLoading(true);
-        const lotteryDocRef = doc(db, `artifacts/${appId}/public/data/lottery`, "current");
+        const lotteryDocRef = doc(dbInstance, `artifacts/${appId}/public/data/lottery`, "current");
         const unsubscribeLottery = onSnapshot(lotteryDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 const prevWinner = lottery.winner;
                 setLottery(prev => ({ ...prev, ...data }));
-                if (data.winner && !prevWinner) { 
+                if (data.winner && !prevWinner) {
                     setShowWinnerModal(true);
                 }
             } else {
@@ -106,11 +110,14 @@ const CryptoLotteryApp = () => {
             setIsLoading(false);
         });
 
-        const participantsColRef = collection(db, `artifacts/${appId}/public/data/lottery/current/participants`);
+        const participantsColRef = collection(dbInstance, `artifacts/${appId}/public/data/lottery/current/participants`);
         const unsubscribeParticipants = onSnapshot(participantsColRef, (snapshot) => {
             const participantsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setParticipants(participantsList);
-            setHasJoined(participantsList.some(p => p.id === userId));
+             // Cek ulang jika ada perubahan dari sumber lain
+            if (!hasJoined) {
+                setHasJoined(participantsList.some(p => p.id === userId));
+            }
         }, (err) => {
             console.error("Error fetching participants:", err);
             setError("Could not load participants list.");
@@ -120,17 +127,17 @@ const CryptoLotteryApp = () => {
             unsubscribeLottery();
             unsubscribeParticipants();
         };
-    }, [isAuthReady, db, userId]);
+    }, [isAuthReady, userId, hasJoined, lottery.winner]);
 
     const handleJoinLottery = async () => {
-        if (!db || !userId || hasJoined) return;
+        if (!dbInstance || !userId || hasJoined) return;
         setIsJoining(true);
         setError('');
 
         try {
-            const lotteryDocRef = doc(db, `artifacts/${appId}/public/data/lottery`, "current");
-            const participantDocRef = doc(db, `artifacts/${appId}/public/data/lottery/current/participants`, userId);
-            
+            const lotteryDocRef = doc(dbInstance, `artifacts/${appId}/public/data/lottery`, "current");
+            const participantDocRef = doc(dbInstance, `artifacts/${appId}/public/data/lottery/current/participants`, userId);
+
             const lotteryDocSnap = await getDoc(lotteryDocRef);
             if (!lotteryDocSnap.exists()) throw new Error("Lottery not found.");
 
@@ -138,10 +145,11 @@ const CryptoLotteryApp = () => {
             const newPot = (currentData.totalPot || 0) + lottery.entryFee;
             const newCount = (currentData.participantsCount || 0) + 1;
 
-            const batch = writeBatch(db);
+            const batch = writeBatch(dbInstance);
             batch.set(participantDocRef, { joinedAt: serverTimestamp() });
             batch.update(lotteryDocRef, { totalPot: newPot, participantsCount: newCount });
             await batch.commit();
+            setHasJoined(true); // Langsung update state setelah berhasil bergabung
         } catch (e) {
             console.error("Error joining lottery:", e);
             setError("Failed to join. Please try again.");
@@ -149,7 +157,7 @@ const CryptoLotteryApp = () => {
             setIsJoining(false);
         }
     };
-
+    
     const handleDrawWinner = async () => {
         if (participants.length === 0) {
             setError("No participants to draw from.");
@@ -160,7 +168,7 @@ const CryptoLotteryApp = () => {
         try {
             const winnerIndex = Math.floor(Math.random() * participants.length);
             const winner = participants[winnerIndex];
-            const lotteryDocRef = doc(db, `artifacts/${appId}/public/data/lottery`, "current");
+            const lotteryDocRef = doc(dbInstance, `artifacts/${appId}/public/data/lottery`, "current");
             await setDoc(lotteryDocRef, { winner: winner.id, lastDrawn: serverTimestamp() }, { merge: true });
         } catch (e) {
             console.error("Error drawing winner:", e);
@@ -171,15 +179,15 @@ const CryptoLotteryApp = () => {
     };
 
     const handleResetLottery = async () => {
-        if (!db) return;
+        if (!dbInstance) return;
         setIsDrawing(true);
         try {
-            const batch = writeBatch(db);
-            const participantsColRef = collection(db, `artifacts/${appId}/public/data/lottery/current/participants`);
+            const batch = writeBatch(dbInstance);
+            const participantsColRef = collection(dbInstance, `artifacts/${appId}/public/data/lottery/current/participants`);
             const participantsSnapshot = await getDocs(participantsColRef);
             participantsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
 
-            const lotteryDocRef = doc(db, `artifacts/${appId}/public/data/lottery`, "current");
+            const lotteryDocRef = doc(dbInstance, `artifacts/${appId}/public/data/lottery`, "current");
             batch.update(lotteryDocRef, {
                 totalPot: 0,
                 participantsCount: 0,
@@ -187,6 +195,7 @@ const CryptoLotteryApp = () => {
                 lastDrawn: serverTimestamp()
             });
             await batch.commit();
+            setHasJoined(false);
             setShowWinnerModal(false);
         } catch (e) {
             console.error("Error resetting lottery:", e);
