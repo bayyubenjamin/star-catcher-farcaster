@@ -1,0 +1,7 @@
+{
+  "name": "Star Catcher Game",
+  "icon": "game-controller",
+  "description": "A simple and fun game to catch falling stars. Built as a Farcaster Mini App.",
+  "url": "https://star-catcher-farcaster.vercel.app",
+  "maintainer": "bayybays"
+}
