@@ -1,18 +1,34 @@
 // File: /api/index.js
 
 export default function handler(req, res) {
-  // Hanya izinkan POST request
-  if (req.method === 'POST') {
-    const gameUrl = 'https://star-catcher-farcaster.vercel.app';
-
-    // Atur header 'Location' untuk memberitahu ke mana harus redirect
-    res.setHeader('Location', gameUrl);
-
-    // Kirim status 302 (Found), yang merupakan kode standar untuk redirect
-    return res.status(302).end();
-  } else {
-    // Jika ada request selain POST, kirim error
+  // Hanya proses POST request
+  if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
+
+  const gameUrl = 'https://star-catcher-farcaster.vercel.app';
+
+  // Kirim respons berupa halaman HTML lengkap
+  // Halaman ini berisi meta refresh (untuk redirect) dan meta frame (untuk konfirmasi)
+  res.setHeader('Content-Type', 'text/html');
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Redirecting to Star Catcher</title>
+        
+        <meta http-equiv="refresh" content="0; url=${gameUrl}" />
+
+        <meta property="og:title" content="Redirecting to Game" />
+        <meta property="og:image" content="https://ik.imagekit.io/5spt6gb2z/IMG_2894.jpeg" />
+        <meta property="fc:frame" content="vNext" />
+        <meta property="fc:frame:image" content="https://ik.imagekit.io/5spt6gb2z/IMG_2894.jpeg" />
+
+      </head>
+      <body>
+        <p>Redirecting to the game... If you are not redirected automatically, <a href="${gameUrl}">click here</a>.</p>
+      </body>
+    </html>
+  `);
 }
